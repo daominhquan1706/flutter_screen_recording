@@ -118,45 +118,50 @@ let screenSize = UIScreen.main.bounds
                     return;
                 }
 
-                switch rpSampleType {
-                case RPSampleBufferType.video:
-                    print("writing sample....");
-                    if self.videoWriter?.status == AVAssetWriter.Status.unknown {
-
-                        if (( self.videoWriter?.startWriting ) != nil) {
+                DispatchQueue.main.async {
+                    switch rpSampleType {
+                    case RPSampleBufferType.video:
+                        print("writing sample....");
+                        if self.videoWriter?.status == AVAssetWriter.Status.unknown {
                             print("Starting writing");
                             self.myResult!(true)
                             self.videoWriter?.startWriting()
-                            self.videoWriter?.startSession(atSourceTime:  CMSampleBufferGetPresentationTimeStamp(cmSampleBuffer))
+                            self.videoWriter?.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(cmSampleBuffer))
                         }
-                    }
 
-                    if self.videoWriter?.status == AVAssetWriter.Status.writing {
-                        if (self.videoWriterInput?.isReadyForMoreMediaData == true) {
-                            print("Writting a sample");
-                            if  self.videoWriterInput?.append(cmSampleBuffer) == false {
-                                print(" we have a problem writing video")
-                                self.myResult!(false)
+                        if self.videoWriter?.status == AVAssetWriter.Status.failed {
+                            print("StartCapture Error Occurred, Status = \(self.videoWriter!.status.rawValue), \(self.videoWriter!.error!.localizedDescription) \(self.videoWriter!.error.debugDescription)")
+                            return
+                        }
+
+                        if self.videoWriter?.status == AVAssetWriter.Status.writing {
+                            if self.videoWriterInput?.isReadyForMoreMediaData == true {
+                                print("Writing a sample");
+                                if self.videoWriterInput?.append(cmSampleBuffer) == false {
+                                    print("problem writing video")
+                                    self.myResult!(false)
+                                }
                             }
                         }
-                    }
 
-                case RPSampleBufferType.audioMic:
-                    if self.audioInput.isReadyForMoreMediaData {
-                        print("audioMic data added")
-                        self.audioInput.append(cmSampleBuffer)
+                    case RPSampleBufferType.audioMic:
+                        if self.audioInput.isReadyForMoreMediaData {
+                            print("audioMic data added")
+                            self.audioInput.append(cmSampleBuffer)
+                        }
+
+                    default:
+                        print("not a video sample, so ignore");
                     }
-                default:
-                   print("not a video sample, so ignore");
                 }
             } ){(error) in
-                        guard error == nil else {
-                           //Handle error
-                           print("Screen record not allowed");
-                           self.myResult!(false)
-                           return;
-                       }
-                   }
+                guard error == nil else {
+                    //Handle error
+                    print("Screen record not allowed");
+                    self.myResult!(false)
+                    return;
+                }
+            }
         } else {
             //Fallback on earlier versions
         }
